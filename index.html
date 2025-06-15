@@ -54,6 +54,14 @@
       margin: 5px;
       background-color: #8dbefc;
     }
+    textarea {
+      width: 80%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-family: 'Playfair Display', serif;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -68,8 +76,9 @@
 
   <div class="container" id="app" style="display:none;">
     <h1>Bienvenida a SafeHer 💙</h1>
-    <p>Activa tu ubicación o di: <strong>"Luz rosa"</strong> para compartirla automáticamente</p>
-    <button onclick="shareLocation()">Compartir ubicación</button>
+    <p>Activa tu ubicación, escríbela o di: <strong>"Luz rosa"</strong> para emergencia</p>
+    <button onclick="shareLocation()">Compartir ubicación automáticamente</button>
+    <textarea id="manualLocation" placeholder="O escribe aquí tu ubicación manualmente"></textarea>
     <p id="statusMsg"></p>
 
     <div class="extra-buttons">
@@ -113,16 +122,22 @@
     }
 
     function copyToClipboard() {
-      if (lastLocationUrl) {
-        navigator.clipboard.writeText(lastLocationUrl).then(() => {
+      let url = lastLocationUrl;
+      const manual = document.getElementById("manualLocation").value;
+      if (!url && manual) url = manual;
+      if (url) {
+        navigator.clipboard.writeText(url).then(() => {
           alert("Ubicación copiada al portapapeles ✔️");
         });
       }
     }
 
     function sendWhatsApp() {
-      if (lastLocationUrl) {
-        const msg = encodeURIComponent("🚨 Estoy en peligro. Aquí está mi ubicación: " + lastLocationUrl);
+      let url = lastLocationUrl;
+      const manual = document.getElementById("manualLocation").value;
+      if (!url && manual) url = manual;
+      if (url) {
+        const msg = encodeURIComponent("🚨 Estoy en peligro. Aquí está mi ubicación: " + url);
         window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
       }
     }
