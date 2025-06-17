@@ -8,19 +8,19 @@
   <style>
     body {
       font-family: 'Playfair Display', serif;
-      background: #dceeff;
+      background: #f3eaff;
       text-align: center;
       padding: 20px;
       color: #333;
     }
     h1 {
-      color: #5d9cec;
+      color: #a678d1;
     }
     .container {
       max-width: 500px;
       margin: auto;
       padding: 20px;
-      background-color: #f1f7ff;
+      background-color: #ffffff;
       border-radius: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
@@ -35,7 +35,7 @@
     }
     button {
       padding: 10px 20px;
-      background-color: #5d9cec;
+      background-color: #a678d1;
       color: white;
       border: none;
       border-radius: 10px;
@@ -52,15 +52,12 @@
     }
     .extra-buttons button {
       margin: 5px;
-      background-color: #8dbefc;
+      background-color: #caaef7;
     }
-    textarea {
-      width: 80%;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      font-family: 'Playfair Display', serif;
-      margin-top: 10px;
+    .legal {
+      font-size: 12px;
+      color: #666;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -75,21 +72,25 @@
   </div>
 
   <div class="container" id="app" style="display:none;">
-    <h1>Bienvenida a SafeHer 💙</h1>
-    <p>Activa tu ubicación, escríbela o di: <strong>"Luz rosa"</strong> para emergencia</p>
-    <button onclick="shareLocation()">Compartir ubicación automáticamente</button>
-    <textarea id="manualLocation" placeholder="O escribe aquí tu ubicación manualmente"></textarea>
+    <h1>Bienvenida a SafeHer</h1>
+    <p>Activa tu ubicación o di: <strong>"Luz rosa"</strong> para compartirla automáticamente</p>
+    <button onclick="shareLocation()">Compartir ubicación</button>
     <p id="statusMsg"></p>
 
     <div class="extra-buttons">
       <button onclick="copyToClipboard()">Copiar ubicación</button>
       <button onclick="sendWhatsApp()">Enviar por WhatsApp</button>
+      <button onclick="simulateStolenPhone()">Reportar teléfono robado</button>
       <button onclick="logout()">Cerrar sesión</button>
     </div>
+    <p class="legal">
+      Al usar esta app aceptas que tu ubicación puede ser compartida y grabada en caso de emergencia.
+    </p>
   </div>
 
   <script>
     let lastLocationUrl = "";
+    let watchId;
 
     function login() {
       const user = document.getElementById('user').value;
@@ -98,6 +99,7 @@
         document.getElementById('login').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         startVoiceCommand();
+        startLiveLocation();
       } else {
         alert("Por favor, llena todos los campos");
       }
@@ -112,7 +114,7 @@
           const url = `https://www.google.com/maps?q=${lat},${lng}`;
           lastLocationUrl = url;
           statusMsg.innerText = "Ubicación lista para compartir.";
-          alert(`🚨 Notificación de emergencia enviada.\nUbicación: ${url}`);
+          alert(`Notificación de emergencia enviada.\nUbicación: ${url}`);
         }, function() {
           statusMsg.innerText = "No se pudo obtener tu ubicación.";
         });
@@ -122,22 +124,16 @@
     }
 
     function copyToClipboard() {
-      let url = lastLocationUrl;
-      const manual = document.getElementById("manualLocation").value;
-      if (!url && manual) url = manual;
-      if (url) {
-        navigator.clipboard.writeText(url).then(() => {
-          alert("Ubicación copiada al portapapeles ✔️");
+      if (lastLocationUrl) {
+        navigator.clipboard.writeText(lastLocationUrl).then(() => {
+          alert("Ubicación copiada al portapapeles");
         });
       }
     }
 
     function sendWhatsApp() {
-      let url = lastLocationUrl;
-      const manual = document.getElementById("manualLocation").value;
-      if (!url && manual) url = manual;
-      if (url) {
-        const msg = encodeURIComponent("🚨 Estoy en peligro. Aquí está mi ubicación: " + url);
+      if (lastLocationUrl) {
+        const msg = encodeURIComponent("Estoy en peligro. Aquí está mi ubicación: " + lastLocationUrl);
         window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
       }
     }
@@ -148,7 +144,7 @@
     }
 
     function simulateEmergencyCall() {
-      alert("📞 Llamando al 911... (simulado)");
+      alert("Llamando al 911... (simulado)");
     }
 
     function startVoiceCommand() {
@@ -171,6 +167,33 @@
       };
 
       recognition.start();
+    }
+
+    function startLiveLocation() {
+      if (navigator.geolocation) {
+        watchId = navigator.geolocation.watchPosition(function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          lastLocationUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        });
+      }
+    }
+
+    function simulateStolenPhone() {
+      const userInfo = {
+        username: document.getElementById('user').value,
+        location: lastLocationUrl,
+        timestamp: new Date().toISOString()
+      };
+      console.log("Enviando a la nube:", userInfo);
+      alert("Información enviada a la nube y eliminada del dispositivo");
+      deleteUserInfo();
+    }
+
+    function deleteUserInfo() {
+      document.getElementById('user').value = "";
+      document.getElementById('pass').value = "";
+      lastLocationUrl = "";
     }
   </script>
 </body>
