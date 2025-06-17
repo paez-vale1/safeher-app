@@ -172,16 +172,27 @@
     function register() {
       const email = document.getElementById('reg-email').value.trim();
       const pass = document.getElementById('reg-pass').value.trim();
+
       if (!email || !pass) {
+        authStatus.style.color = "red";
         authStatus.textContent = "Por favor, completa todos los campos.";
         return;
       }
+
+      if (pass.length < 6) {
+        authStatus.style.color = "red";
+        authStatus.textContent = "La contraseña debe tener al menos 6 caracteres.";
+        return;
+      }
+
       auth.createUserWithEmailAndPassword(email, pass)
         .then(userCredential => {
           currentUser = userCredential.user;
           authStatus.style.color = "green";
-          authStatus.textContent = "Cuenta creada. Iniciando sesión...";
-          showApp();
+          authStatus.textContent = "Cuenta creada con éxito. Iniciando sesión...";
+          setTimeout(() => {
+            showApp();
+          }, 1000);
         })
         .catch(error => {
           authStatus.style.color = "red";
@@ -193,10 +204,13 @@
     function login() {
       const email = document.getElementById('login-email').value.trim();
       const pass = document.getElementById('login-pass').value.trim();
+
       if (!email || !pass) {
+        authStatus.style.color = "red";
         authStatus.textContent = "Por favor, completa todos los campos.";
         return;
       }
+
       auth.signInWithEmailAndPassword(email, pass)
         .then(userCredential => {
           currentUser = userCredential.user;
@@ -204,6 +218,7 @@
           showApp();
         })
         .catch(error => {
+          authStatus.style.color = "red";
           authStatus.textContent = "Correo o contraseña incorrectos.";
         });
     }
@@ -302,7 +317,6 @@
       }
       statusMsg.textContent = "Reportando teléfono perdido...";
       try {
-        // Aquí podrías agregar más datos o subir un archivo, simulado con solo un mensaje
         await db.collection('reportes').add({
           uid: currentUser.uid,
           email: currentUser.email,
@@ -312,7 +326,6 @@
         statusMsg.textContent = "Reporte enviado a la nube. Datos eliminados localmente.";
         alert("Tu reporte fue enviado con éxito.");
 
-        // Simular borrar info local
         lastLocationUrl = "";
       } catch (e) {
         console.error("Error en reporte:", e);
