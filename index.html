@@ -1,317 +1,207 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SafeHer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZeLCycCyMXqa3Tmgr01teXIXNs7-sL6I",
+      authDomain: "safeher-app-59ac2.firebaseapp.com",
+      projectId: "safeher-app-59ac2",
+      storageBucket: "safeher-app-59ac2.appspot.com",
+      messagingSenderId: "525149048624",
+      appId: "1:525149048624:web:933c6f0c1199d92600c2f5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore(app);
+
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    const appContent = document.getElementById("app");
+
+    document.getElementById("register-btn").addEventListener("click", async () => {
+      const email = document.getElementById("register-email").value;
+      const password = document.getElementById("register-pass").value;
+      if (email && password) {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert("Cuenta creada con éxito");
+      }
+    });
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-pass").value;
+      if (email && password) {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await signOut(auth);
+    });
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        loginForm.style.display = "none";
+        registerForm.style.display = "none";
+        appContent.style.display = "block";
+        startVoiceCommand();
+      } else {
+        loginForm.style.display = "block";
+        registerForm.style.display = "block";
+        appContent.style.display = "none";
+      }
+    });
+
+    window.shareLocation = async () => {
+      const statusMsg = document.getElementById("statusMsg");
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const url = `https://www.google.com/maps?q=${lat},${lng}`;
+          window.lastLocationUrl = url;
+          statusMsg.innerText = "Ubicación lista para compartir.";
+          await addDoc(collection(db, "emergencias"), {
+            uid: auth.currentUser.uid,
+            ubicacion: url,
+            timestamp: new Date()
+          });
+          alert(`Notificación de emergencia enviada.\nUbicación: ${url}`);
+        }, function() {
+          statusMsg.innerText = "No se pudo obtener tu ubicación.";
+        });
+      } else {
+        statusMsg.innerText = "Tu navegador no soporta geolocalización.";
+      }
+    }
+
+    window.copyToClipboard = () => {
+      if (window.lastLocationUrl) {
+        navigator.clipboard.writeText(window.lastLocationUrl).then(() => {
+          alert("Ubicación copiada al portapapeles");
+        });
+      }
+    }
+
+    window.sendWhatsApp = () => {
+      if (window.lastLocationUrl) {
+        const msg = encodeURIComponent("Estoy en peligro. Aquí está mi ubicación: " + window.lastLocationUrl);
+        window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
+      }
+    }
+
+    window.simulateEmergencyCall = () => {
+      alert("Llamando al 911... (simulado)");
+    }
+
+    function startVoiceCommand() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'es-ES';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      recognition.onresult = function(event) {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim().toLowerCase();
+        if(command.includes("luz rosa")) {
+          shareLocation();
+          simulateEmergencyCall();
+        }
+      };
+
+      recognition.onerror = function(event) {
+        console.log("Error de voz:", event.error);
+      };
+
+      recognition.start();
+    }
+  </script>
   <style>
     body {
       font-family: 'Playfair Display', serif;
-      background: #d6c4f1; /* morado pastel */
-      color: #3b2c6f;
+      background: #f3e5f5;
       text-align: center;
       padding: 20px;
+      color: #333;
     }
-    h1, h2 {
-      color: #5a3e9e;
+    h1 {
+      color: #6a1b9a;
     }
     .container {
       max-width: 500px;
-      margin: 20px auto;
-      background-color: #f9f6ff; /* blanco suave */
-      padding: 25px;
+      margin: auto;
+      padding: 20px;
+      background-color: #ffffff;
       border-radius: 20px;
-      box-shadow: 0 4px 12px rgba(90, 62, 158, 0.2);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-top: 20px;
     }
-    input[type="email"], input[type="password"], input[type="text"] {
-      width: 80%;
+    input[type="text"], input[type="password"] {
       padding: 10px;
-      margin: 12px auto;
+      width: 80%;
+      margin: 10px auto;
       border-radius: 10px;
-      border: 1px solid #a890d6;
-      font-family: 'Playfair Display', serif;
-      font-size: 16px;
+      border: 1px solid #ccc;
       display: block;
+      font-family: 'Playfair Display', serif;
     }
     button {
-      padding: 12px 25px;
-      margin: 10px;
-      border-radius: 12px;
-      border: none;
-      background-color: #7b5dd6;
+      padding: 10px 20px;
+      background-color: #ba68c8;
       color: white;
-      font-family: 'Playfair Display', serif;
-      font-size: 18px;
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background-color: #5a3e9e;
+      margin-top: 10px;
+      font-family: 'Playfair Display', serif;
     }
     #statusMsg {
-      font-weight: 600;
-      margin-top: 15px;
-      color: #5a3e9e;
-      min-height: 22px;
-    }
-    .policy {
-      font-size: 12px;
-      color: #4a3b75;
-      margin-top: 20px;
-      text-align: justify;
-      line-height: 1.3em;
+      margin-top: 10px;
+      font-weight: bold;
     }
     .extra-buttons button {
-      background-color: #a186e8;
-      margin: 8px 6px;
-    }
-    .extra-buttons button:hover {
-      background-color: #7b5dd6;
-    }
-    #logoutBtn {
-      background-color: #d66b7b;
-    }
-    #logoutBtn:hover {
-      background-color: #9e4250;
+      margin: 5px;
+      background-color: #ce93d8;
     }
   </style>
 </head>
 <body>
 
-  <div class="container" id="login">
-    <h1>SafeHer</h1>
-    <h2>Iniciar sesión</h2>
-    <input type="email" id="email" placeholder="Correo electrónico" />
-    <input type="password" id="password" placeholder="Contraseña" />
-    <button onclick="login()">Entrar</button>
-    <button onclick="register()">Registrar cuenta</button>
-    <p id="statusMsg"></p>
+  <div class="container" id="register-form">
+    <h1>Crear cuenta</h1>
+    <input type="text" id="register-email" placeholder="Correo electrónico">
+    <input type="password" id="register-pass" placeholder="Contraseña">
+    <button id="register-btn">Crear cuenta</button>
+  </div>
+
+  <div class="container" id="login-form">
+    <h1>Iniciar sesión</h1>
+    <input type="text" id="login-email" placeholder="Correo electrónico">
+    <input type="password" id="login-pass" placeholder="Contraseña">
+    <button id="login-btn">Iniciar sesión</button>
   </div>
 
   <div class="container" id="app" style="display:none;">
     <h1>Bienvenida a SafeHer</h1>
-    <p>Activa tu ubicación o di: <strong>"luz rosa"</strong> para compartirla automáticamente y llamar a emergencias (simulado)</p>
-    
-    <button onclick="startSharing()">Compartir ubicación en tiempo real</button>
-    <button onclick="stopSharing()">Detener ubicación</button>
-    
-    <div class="extra-buttons">
-      <button onclick="copyLocation()">Copiar última ubicación</button>
-      <button onclick="sendWhatsApp()">Enviar ubicación por WhatsApp</button>
-      <button id="logoutBtn" onclick="logout()">Cerrar sesión</button>
-    </div>
-    
+    <p>Activa tu ubicación o di: "Luz rosa" para compartirla automáticamente.</p>
+    <p><strong>Política:</strong> Esta aplicación recopilará tu ubicación en caso de emergencia y la enviará a la nube para protección. Si reportas tu teléfono como robado, tus datos serán eliminados automáticamente.</p>
+    <button onclick="shareLocation()">Compartir ubicación</button>
     <p id="statusMsg"></p>
-    
-    <div class="policy">
-      <strong>Políticas de privacidad:</strong><br />
-      Al usar esta aplicación, autorizas que tu ubicación sea compartida en tiempo real para emergencias. En caso de reportar robo o pérdida de tu teléfono, tu información será guardada en la nube de forma segura y eliminada del dispositivo local después de enviarla. La grabación de voz solo se usa para activar emergencias y no se almacena.
-    </div>
-
-    <div style="margin-top:20px;">
-      <h2>Reportar robo o pérdida del teléfono</h2>
-      <button onclick="reportTheft()">Reportar teléfono robado/perdido</button>
+    <div class="extra-buttons">
+      <button onclick="copyToClipboard()">Copiar ubicación</button>
+      <button onclick="sendWhatsApp()">Enviar por WhatsApp</button>
+      <button id="logout-btn">Cerrar sesión</button>
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    // Tu configuración Firebase:
-    const firebaseConfig = {
-      apiKey: "AIzaSyBZeLCycCyMXqa3Tmgr01teXIXNs7-sL6I",
-      authDomain: "safeher-app-59ac2.firebaseapp.com",
-      projectId: "safeher-app-59ac2",
-      storageBucket: "safeher-app-59ac2.firebasestorage.app",
-      messagingSenderId: "525149048624",
-      appId: "1:525149048624:web:933c6f0c1199d92600c2f5"
-    };
-
-    // Inicializar Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth();
-    const db = getDatabase();
-
-    let watchId = null;
-    let lastLocationUrl = "";
-    let userId = null;
-
-    const statusMsg = document.getElementById("statusMsg");
-
-    function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      if (!email || !password) {
-        statusMsg.innerText = "Por favor completa ambos campos.";
-        return;
-      }
-      signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          userId = userCredential.user.uid;
-          statusMsg.innerText = "Sesión iniciada.";
-          showApp();
-          startVoiceRecognition();
-        })
-        .catch((error) => {
-          statusMsg.innerText = "Error al iniciar sesión: " + error.message;
-        });
-    }
-
-    function register() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      if (!email || !password) {
-        statusMsg.innerText = "Por favor completa ambos campos.";
-        return;
-      }
-      createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          userId = userCredential.user.uid;
-          statusMsg.innerText = "Cuenta creada. Iniciando sesión...";
-          showApp();
-          startVoiceRecognition();
-        })
-        .catch((error) => {
-          statusMsg.innerText = "Error al registrar: " + error.message;
-        });
-    }
-
-    function showApp() {
-      document.getElementById("login").style.display = "none";
-      document.getElementById("app").style.display = "block";
-    }
-
-    function logout() {
-      signOut(auth).then(() => {
-        userId = null;
-        stopSharing();
-        document.getElementById("app").style.display = "none";
-        document.getElementById("login").style.display = "block";
-        statusMsg.innerText = "";
-      });
-    }
-
-    function startSharing() {
-      if (!navigator.geolocation) {
-        statusMsg.innerText = "Tu navegador no soporta geolocalización.";
-        return;
-      }
-      if (watchId !== null) {
-        statusMsg.innerText = "Ya estás compartiendo ubicación.";
-        return;
-      }
-      watchId = navigator.geolocation.watchPosition((position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        lastLocationUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-        statusMsg.innerText = "Ubicación compartida: " + lastLocationUrl;
-
-        if (userId) {
-          set(ref(db, 'locations/' + userId), {
-            latitude: lat,
-            longitude: lng,
-            timestamp: Date.now()
-          });
-        }
-      }, (error) => {
-        statusMsg.innerText = "Error al obtener ubicación: " + error.message;
-      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 7000 });
-    }
-
-    function stopSharing() {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        statusMsg.innerText = "Compartir ubicación detenido.";
-      } else {
-        statusMsg.innerText = "No estabas compartiendo ubicación.";
-      }
-    }
-
-    function copyLocation() {
-      if (lastLocationUrl) {
-        navigator.clipboard.writeText(lastLocationUrl).then(() => {
-          alert("Última ubicación copiada.");
-        });
-      } else {
-        alert("No hay ubicación para copiar.");
-      }
-    }
-
-    function sendWhatsApp() {
-      if (lastLocationUrl) {
-        const msg = encodeURIComponent("Estoy en peligro, aquí está mi ubicación: " + lastLocationUrl);
-        window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
-      } else {
-        alert("No hay ubicación para enviar.");
-      }
-    }
-
-    function reportTheft() {
-      if (!userId) {
-        alert("Debes iniciar sesión para reportar.");
-        return;
-      }
-      // Simula guardar info y eliminar local
-      const info = {
-        reportedAt: Date.now(),
-        message: "Teléfono reportado como robado o perdido",
-      };
-      set(ref(db, 'thefts/' + userId), info)
-        .then(() => {
-          alert("Información enviada a la nube. Se eliminará del dispositivo local.");
-          // Aquí podrías agregar lógica para eliminar datos locales si los hubiera.
-        })
-        .catch((error) => {
-          alert("Error al enviar reporte: " + error.message);
-        });
-    }
-
-    // Voz para "luz rosa"
-    function startVoiceRecognition() {
-      if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-        console.log("Tu navegador no soporta reconocimiento de voz.");
-        return;
-      }
-
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'es-ES';
-      recognition.continuous = true;
-      recognition.interimResults = false;
-
-      recognition.onresult = function (event) {
-        const last = event.results.length - 1;
-        const command = event.results[last][0].transcript.trim().toLowerCase();
-        if (command.includes("luz rosa")) {
-          startSharing();
-          alert("Simulando llamada al 911...");
-        }
-      };
-
-      recognition.onerror = function (event) {
-        console.log("Error reconocimiento voz:", event.error);
-      };
-
-      recognition.start();
-    }
-
-    // Mantener sesión activa
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        userId = user.uid;
-        showApp();
-        startVoiceRecognition();
-      } else {
-        userId = null;
-        document.getElementById("app").style.display = "none";
-        document.getElementById("login").style.display = "block";
-      }
-    });
-  </script>
 </body>
 </html>
