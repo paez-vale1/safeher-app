@@ -1,15 +1,134 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SafeHer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Playfair Display', serif;
+      background: #d7c9e3; /* morado pastel */
+      color: #3a1a4d;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      max-width: 450px;
+      margin: 30px auto;
+      padding: 30px 20px;
+      box-shadow: 0 4px 10px rgba(58,26,77,0.2);
+    }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 80%;
+      padding: 12px;
+      margin: 12px auto;
+      border-radius: 10px;
+      border: 1px solid #b099c3;
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      display: block;
+      color: #3a1a4d;
+    }
+    button {
+      background-color: #9279b6;
+      border: none;
+      color: white;
+      padding: 12px 25px;
+      margin-top: 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #6f5491;
+    }
+    #statusMsg {
+      margin-top: 15px;
+      font-weight: 600;
+      min-height: 22px;
+    }
+    .link-btn {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #6f5491;
+      cursor: pointer;
+      text-decoration: underline;
+      background: none;
+      border: none;
+      font-family: 'Playfair Display', serif;
+    }
+    .extra-buttons {
+      margin-top: 20px;
+    }
+    .extra-buttons button {
+      margin: 6px 6px 0 6px;
+      background-color: #b29ddb;
+    }
+    .policy {
+      font-size: 0.8rem;
+      color: #5d4a75;
+      margin-top: 25px;
+      line-height: 1.3;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="auth-container">
+    <h1>SafeHer</h1>
+    <div id="register-form" style="display:none;">
+      <input type="email" id="reg-email" placeholder="Correo electrónico" />
+      <input type="password" id="reg-pass" placeholder="Contraseña" />
+      <button onclick="register()">Crear cuenta</button>
+      <button class="link-btn" onclick="toggleForms()">¿Ya tienes cuenta? Inicia sesión</button>
+    </div>
+    <div id="login-form">
+      <input type="email" id="login-email" placeholder="Correo electrónico" />
+      <input type="password" id="login-pass" placeholder="Contraseña" />
+      <button onclick="login()">Iniciar sesión</button>
+      <button class="link-btn" onclick="toggleForms()">¿No tienes cuenta? Regístrate</button>
+    </div>
+    <p id="auth-status" style="color: red; min-height: 18px;"></p>
+  </div>
 
+  <div class="container" id="app" style="display:none;">
+    <h1>Bienvenida a SafeHer</h1>
+    <p>Activa tu ubicación o di <strong>"luz rosa"</strong> para enviar automáticamente tu ubicación y reportar emergencia</p>
+    <button onclick="shareLocation()">Compartir ubicación ahora</button>
+    <div class="extra-buttons">
+      <button onclick="copyToClipboard()">Copiar ubicación</button>
+      <button onclick="sendWhatsApp()">Enviar por WhatsApp</button>
+      <button onclick="reportLostPhone()">Reportar teléfono perdido</button>
+      <button onclick="logout()">Cerrar sesión</button>
+    </div>
+    <p id="statusMsg"></p>
+
+    <p class="policy">
+      Al usar esta app aceptas que tu ubicación será compartida y registrada en caso de emergencia.<br />
+      La información se guardará temporalmente y será eliminada automáticamente tras el envío.
+    </p>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <script>
+    // Tu configuración Firebase (reemplaza con la tuya)
     const firebaseConfig = {
       apiKey: "AIzaSyBZeLCycCyMXqa3Tmgr01teXIXNs7-sL6I",
       authDomain: "safeher-app-59ac2.firebaseapp.com",
@@ -19,189 +138,237 @@
       appId: "1:525149048624:web:933c6f0c1199d92600c2f5"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth();
-    const db = getFirestore(app);
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
-    const loginForm = document.getElementById("login-form");
-    const registerForm = document.getElementById("register-form");
-    const appContent = document.getElementById("app");
+    // Elementos
+    const authContainer = document.getElementById('auth-container');
+    const appContainer = document.getElementById('app');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const authStatus = document.getElementById('auth-status');
+    const statusMsg = document.getElementById('statusMsg');
 
-    document.getElementById("register-btn").addEventListener("click", async () => {
-      const email = document.getElementById("register-email").value;
-      const password = document.getElementById("register-pass").value;
-      if (email && password) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert("Cuenta creada con éxito");
-      }
-    });
+    let lastLocationUrl = "";
+    let currentUser = null;
+    let recognition;
 
-    document.getElementById("login-btn").addEventListener("click", async () => {
-      const email = document.getElementById("login-email").value;
-      const password = document.getElementById("login-pass").value;
-      if (email && password) {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    });
-
-    document.getElementById("logout-btn").addEventListener("click", async () => {
-      await signOut(auth);
-    });
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        loginForm.style.display = "none";
-        registerForm.style.display = "none";
-        appContent.style.display = "block";
-        startVoiceCommand();
-      } else {
+    // Cambiar entre formularios login/registro
+    function toggleForms() {
+      authStatus.textContent = "";
+      if (loginForm.style.display === "none") {
         loginForm.style.display = "block";
+        registerForm.style.display = "none";
+      } else {
+        loginForm.style.display = "none";
         registerForm.style.display = "block";
-        appContent.style.display = "none";
       }
-    });
+    }
 
-    window.shareLocation = async () => {
-      const statusMsg = document.getElementById("statusMsg");
+    // Registro
+    function register() {
+      const email = document.getElementById('reg-email').value.trim();
+      const pass = document.getElementById('reg-pass').value.trim();
+      if (!email || !pass) {
+        authStatus.textContent = "Por favor, completa todos los campos.";
+        return;
+      }
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(userCredential => {
+          currentUser = userCredential.user;
+          authStatus.style.color = "green";
+          authStatus.textContent = "Cuenta creada. Iniciando sesión...";
+          showApp();
+        })
+        .catch(error => {
+          authStatus.style.color = "red";
+          authStatus.textContent = error.message;
+        });
+    }
+
+    // Login
+    function login() {
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-pass').value.trim();
+      if (!email || !pass) {
+        authStatus.textContent = "Por favor, completa todos los campos.";
+        return;
+      }
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(userCredential => {
+          currentUser = userCredential.user;
+          authStatus.textContent = "";
+          showApp();
+        })
+        .catch(error => {
+          authStatus.textContent = "Correo o contraseña incorrectos.";
+        });
+    }
+
+    // Mostrar app y comenzar reconocimiento por voz
+    function showApp() {
+      authContainer.style.display = "none";
+      appContainer.style.display = "block";
+      startVoiceCommand();
+    }
+
+    // Cerrar sesión
+    function logout() {
+      auth.signOut().then(() => {
+        currentUser = null;
+        appContainer.style.display = "none";
+        authContainer.style.display = "block";
+        clearFields();
+        stopVoiceCommand();
+      });
+    }
+
+    function clearFields() {
+      document.getElementById('login-email').value = "";
+      document.getElementById('login-pass').value = "";
+      document.getElementById('reg-email').value = "";
+      document.getElementById('reg-pass').value = "";
+      authStatus.textContent = "";
+      statusMsg.textContent = "";
+      lastLocationUrl = "";
+    }
+
+    // Compartir ubicación actual
+    function shareLocation() {
+      statusMsg.textContent = "Obteniendo ubicación...";
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async function(position) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const url = `https://www.google.com/maps?q=${lat},${lng}`;
-          window.lastLocationUrl = url;
-          statusMsg.innerText = "Ubicación lista para compartir.";
-          await addDoc(collection(db, "emergencias"), {
-            uid: auth.currentUser.uid,
-            ubicacion: url,
-            timestamp: new Date()
-          });
-          alert(`Notificación de emergencia enviada.\nUbicación: ${url}`);
-        }, function() {
-          statusMsg.innerText = "No se pudo obtener tu ubicación.";
+          lastLocationUrl = url;
+          statusMsg.textContent = "Ubicación lista para compartir.";
+
+          // Guardar en Firestore
+          if(currentUser){
+            try {
+              const timestamp = new Date();
+              const docRef = await db.collection('emergencias').add({
+                uid: currentUser.uid,
+                email: currentUser.email,
+                locationUrl: url,
+                timestamp: timestamp.toISOString()
+              });
+
+              // Borrar después de 1 minuto (60,000 ms)
+              setTimeout(async () => {
+                await db.collection('emergencias').doc(docRef.id).delete();
+              }, 60000);
+
+            } catch (e) {
+              console.error("Error guardando en la nube:", e);
+            }
+          }
+
+          alert("Ubicación enviada y registrada temporalmente.");
+        }, () => {
+          statusMsg.textContent = "No se pudo obtener tu ubicación.";
         });
       } else {
-        statusMsg.innerText = "Tu navegador no soporta geolocalización.";
+        statusMsg.textContent = "Tu navegador no soporta geolocalización.";
       }
     }
 
-    window.copyToClipboard = () => {
-      if (window.lastLocationUrl) {
-        navigator.clipboard.writeText(window.lastLocationUrl).then(() => {
-          alert("Ubicación copiada al portapapeles");
+    // Copiar ubicación al portapapeles
+    function copyToClipboard() {
+      if (lastLocationUrl) {
+        navigator.clipboard.writeText(lastLocationUrl).then(() => {
+          alert("Ubicación copiada al portapapeles.");
         });
       }
     }
 
-    window.sendWhatsApp = () => {
-      if (window.lastLocationUrl) {
-        const msg = encodeURIComponent("Estoy en peligro. Aquí está mi ubicación: " + window.lastLocationUrl);
+    // Enviar ubicación por WhatsApp
+    function sendWhatsApp() {
+      if (lastLocationUrl) {
+        const msg = encodeURIComponent("Estoy en peligro. Mi ubicación es: " + lastLocationUrl);
         window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
       }
     }
 
-    window.simulateEmergencyCall = () => {
-      alert("Llamando al 911... (simulado)");
+    // Reportar teléfono perdido: simula guardar datos y borrar info local
+    async function reportLostPhone() {
+      if (!currentUser) {
+        alert("Inicia sesión para reportar.");
+        return;
+      }
+      statusMsg.textContent = "Reportando teléfono perdido...";
+      try {
+        // Aquí podrías agregar más datos o subir un archivo, simulado con solo un mensaje
+        await db.collection('reportes').add({
+          uid: currentUser.uid,
+          email: currentUser.email,
+          reporte: "Teléfono perdido o robado",
+          timestamp: new Date().toISOString()
+        });
+        statusMsg.textContent = "Reporte enviado a la nube. Datos eliminados localmente.";
+        alert("Tu reporte fue enviado con éxito.");
+
+        // Simular borrar info local
+        lastLocationUrl = "";
+      } catch (e) {
+        console.error("Error en reporte:", e);
+        statusMsg.textContent = "Error al enviar reporte.";
+      }
     }
 
+    // Reconocimiento de voz para "luz rosa"
     function startVoiceCommand() {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.log("Reconocimiento de voz no soportado en este navegador.");
+        return;
+      }
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = 'es-ES';
       recognition.continuous = true;
       recognition.interimResults = false;
 
       recognition.onresult = function(event) {
-        const last = event.results.length - 1;
-        const command = event.results[last][0].transcript.trim().toLowerCase();
-        if(command.includes("luz rosa")) {
+        const lastIndex = event.results.length - 1;
+        const transcript = event.results[lastIndex][0].transcript.trim().toLowerCase();
+        if(transcript.includes("luz rosa")){
           shareLocation();
           simulateEmergencyCall();
         }
       };
 
       recognition.onerror = function(event) {
-        console.log("Error de voz:", event.error);
+        console.log("Error reconocimiento voz:", event.error);
       };
 
       recognition.start();
     }
+
+    function stopVoiceCommand() {
+      if (recognition) {
+        recognition.stop();
+      }
+    }
+
+    // Simular llamada de emergencia sin hacer llamada real
+    function simulateEmergencyCall() {
+      alert("Llamando al 911... (simulado)");
+    }
+
+    // Mantener sesión si ya está logueado
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        showApp();
+      } else {
+        currentUser = null;
+        authContainer.style.display = "block";
+        appContainer.style.display = "none";
+      }
+    });
   </script>
-  <style>
-    body {
-      font-family: 'Playfair Display', serif;
-      background: #f3e5f5;
-      text-align: center;
-      padding: 20px;
-      color: #333;
-    }
-    h1 {
-      color: #6a1b9a;
-    }
-    .container {
-      max-width: 500px;
-      margin: auto;
-      padding: 20px;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      margin-top: 20px;
-    }
-    input[type="text"], input[type="password"] {
-      padding: 10px;
-      width: 80%;
-      margin: 10px auto;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      display: block;
-      font-family: 'Playfair Display', serif;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #ba68c8;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin-top: 10px;
-      font-family: 'Playfair Display', serif;
-    }
-    #statusMsg {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    .extra-buttons button {
-      margin: 5px;
-      background-color: #ce93d8;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container" id="register-form">
-    <h1>Crear cuenta</h1>
-    <input type="text" id="register-email" placeholder="Correo electrónico">
-    <input type="password" id="register-pass" placeholder="Contraseña">
-    <button id="register-btn">Crear cuenta</button>
-  </div>
-
-  <div class="container" id="login-form">
-    <h1>Iniciar sesión</h1>
-    <input type="text" id="login-email" placeholder="Correo electrónico">
-    <input type="password" id="login-pass" placeholder="Contraseña">
-    <button id="login-btn">Iniciar sesión</button>
-  </div>
-
-  <div class="container" id="app" style="display:none;">
-    <h1>Bienvenida a SafeHer</h1>
-    <p>Activa tu ubicación o di: "Luz rosa" para compartirla automáticamente.</p>
-    <p><strong>Política:</strong> Esta aplicación recopilará tu ubicación en caso de emergencia y la enviará a la nube para protección. Si reportas tu teléfono como robado, tus datos serán eliminados automáticamente.</p>
-    <button onclick="shareLocation()">Compartir ubicación</button>
-    <p id="statusMsg"></p>
-    <div class="extra-buttons">
-      <button onclick="copyToClipboard()">Copiar ubicación</button>
-      <button onclick="sendWhatsApp()">Enviar por WhatsApp</button>
-      <button id="logout-btn">Cerrar sesión</button>
-    </div>
-  </div>
-
 </body>
 </html>
